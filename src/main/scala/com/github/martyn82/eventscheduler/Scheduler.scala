@@ -1,45 +1,57 @@
 package com.github.martyn82.eventscheduler
 
 import akka.Done
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
 import akka.pattern.StatusReply
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplyEffect}
 
+import java.time.Instant
 import java.util.UUID
+import scala.concurrent.duration._
 
 object Scheduler {
   type Identifier = String
   type Token = String
+  type Timestamp = Long
+  type MillisFromNow = Long
 
-  val EntityType = "Scheduler"
+  val EntityKey: EntityTypeKey[Command] = EntityTypeKey[Command]("Scheduler")
+  val Tags: Vector[String] = Vector.tabulate(1) { i => s"scheduler-$i" }
 
   sealed trait Command extends Serializable
 
-  final case class Schedule(event: String, replyTo: ActorRef[StatusReply[Token]]) extends Command
-  final case class Reschedule(token: Token, replyTo: ActorRef[StatusReply[Token]]) extends Command
+  final case class Schedule(event: Any, in: MillisFromNow, replyTo: ActorRef[StatusReply[Token]]) extends Command
+  final case class Reschedule(token: Token, in: MillisFromNow, replyTo: ActorRef[StatusReply[Token]]) extends Command
   final case class Cancel(token: Token, replyTo: ActorRef[StatusReply[Done]]) extends Command
   final case class Expire(token: Token, replyTo: ActorRef[StatusReply[Done]]) extends Command
 
   sealed trait Event extends Serializable
 
-  final case class Scheduled(token: Token, event: Any) extends Event
+  final case class Scheduled(token: Token, event: Any, at: Timestamp) extends Event
   final case class Canceled(token: Token) extends Event
-  final case class Rescheduled(token: Token, event: Any) extends Event
+  final case class Rescheduled(token: Token, event: Any, at: Timestamp) extends Event
   final case class Expired(token: Token) extends Event
 
   sealed trait State extends Serializable
 
   object State {
     final case class Unscheduled() extends State
-    final case class Scheduled(token: Token, event: Any) extends State
+    final case class Scheduled(token: Token, event: Any, at: Timestamp) extends State
     final case class Canceled(token: Token) extends State
     final case class Expired(token: Token) extends State
   }
 
+  def init(system: ActorSystem[_]): Unit = {
+    ClusterSharding(system).init(Entity(EntityKey) { entityContext =>
+      Scheduler(entityContext.entityId)
+    })
+  }
+
   def apply(id: Identifier): Behavior[Command] = {
     EventSourcedBehavior(
-      persistenceId   = PersistenceId(EntityType, id),
+      persistenceId   = PersistenceId(EntityKey.name, id),
       emptyState      = State.Unscheduled(),
       commandHandler  = applyCommand,
       eventHandler    = applyEvent
@@ -50,7 +62,7 @@ object Scheduler {
     state match {
       case state: State.Unscheduled =>
         command match {
-          case command: Schedule  =>
+          case command: Schedule =>
             schedule(state, command)
 
           case command: Reschedule =>
@@ -114,12 +126,12 @@ object Scheduler {
     }
   }
 
-  protected val applyEvent: (State, Event) => State = { (_, event) =>
+  protected val applyEvent: (State, Event) => State = { (state, event) =>
     event match {
-      case Scheduled(token, event)    => State.Scheduled(token, event)
-      case Rescheduled(token, event)  => State.Scheduled(token, event)
-      case Canceled(token)            => State.Canceled(token)
-      case Expired(token)             => State.Expired(token)
+      case Scheduled(token, event, at)    => State.Scheduled(token, event, at)
+      case Rescheduled(token, event, at)  => State.Scheduled(token, event, at)
+      case Canceled(token)                => State.Canceled(token)
+      case Expired(token)                 => State.Expired(token)
     }
   }
 
@@ -130,7 +142,7 @@ object Scheduler {
     val token = generateToken()
 
     Effect
-      .persist(Scheduled(token, command.event))
+      .persist(Scheduled(token, command.event, Instant.now().plusMillis(command.in).toEpochMilli))
       .thenReply(command.replyTo)(_ => StatusReply.Success(token))
   }
 
@@ -141,7 +153,7 @@ object Scheduler {
 
   private def reschedule(state: State.Scheduled, command: Reschedule): ReplyEffect[Event, State] =
     Effect
-      .persist(Rescheduled(command.token, state.event))
+      .persist(Rescheduled(command.token, state.event, Instant.now().plusMillis(command.in).toEpochMilli))
       .thenReply(command.replyTo)(_ => StatusReply.Success(command.token))
 
   private def expire(state: State.Scheduled, command: Expire): ReplyEffect[Event, State] =

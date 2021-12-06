@@ -7,6 +7,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpecLike
 
+import scala.concurrent.duration._
+
 object SchedulerSpec {
   val config: Config = ConfigFactory.parseString(
     s"""
@@ -35,13 +37,13 @@ class SchedulerSpec extends ScalaTestWithActorTestKit(EventSourcedBehaviorTestKi
 
   "Scheduler" must {
     "schedule an event" in {
-      val result = eventSourcedTestKit.runCommand(Scheduler.Schedule("foo", _))
+      val result = eventSourcedTestKit.runCommand(Scheduler.Schedule("foo", 1.hour.toMillis, _))
       result.event shouldBe an[Scheduler.Scheduled]
       result.stateOfType[Scheduler.State.Scheduled].token shouldNot be(empty)
     }
 
     "cancel a scheduled event" in {
-      val token = eventSourcedTestKit.runCommand[StatusReply[Scheduler.Token]](Scheduler.Schedule("foo", _))
+      val token = eventSourcedTestKit.runCommand[StatusReply[Scheduler.Token]](Scheduler.Schedule("foo", 1.hour.toMillis, _))
         .reply.getValue
 
       val result = eventSourcedTestKit.runCommand(Scheduler.Cancel(token, _))
@@ -50,16 +52,16 @@ class SchedulerSpec extends ScalaTestWithActorTestKit(EventSourcedBehaviorTestKi
     }
 
     "reschedule a scheduled event" in {
-      val token = eventSourcedTestKit.runCommand[StatusReply[Scheduler.Token]](Scheduler.Schedule("foo", _))
+      val token = eventSourcedTestKit.runCommand[StatusReply[Scheduler.Token]](Scheduler.Schedule("foo", 1.hour.toMillis, _))
         .reply.getValue
 
-      val result = eventSourcedTestKit.runCommand(Scheduler.Reschedule(token, _))
+      val result = eventSourcedTestKit.runCommand(Scheduler.Reschedule(token, 1.hour.toMillis, _))
       result.event shouldBe an[Scheduler.Rescheduled]
       result.stateOfType[Scheduler.State.Scheduled].token shouldBe token
     }
 
     "expire a scheduled event" in {
-      val token = eventSourcedTestKit.runCommand[StatusReply[Scheduler.Token]](Scheduler.Schedule("foo", _))
+      val token = eventSourcedTestKit.runCommand[StatusReply[Scheduler.Token]](Scheduler.Schedule("foo", 1.hour.toMillis, _))
         .reply.getValue
 
       val result = eventSourcedTestKit.runCommand(Scheduler.Expire(token, _))
@@ -68,14 +70,14 @@ class SchedulerSpec extends ScalaTestWithActorTestKit(EventSourcedBehaviorTestKi
     }
 
     "not be able to Schedule an already scheduled event" in {
-      eventSourcedTestKit.runCommand(Scheduler.Schedule("foo", _))
+      eventSourcedTestKit.runCommand(Scheduler.Schedule("foo", 1.hour.toMillis, _))
 
-      val result = eventSourcedTestKit.runCommand(Scheduler.Schedule("foo", _))
+      val result = eventSourcedTestKit.runCommand(Scheduler.Schedule("foo", 1.hour.toMillis, _))
       result.reply.isError shouldBe true
     }
 
     "not be able to Reschedule an unscheduled event" in {
-      val result = eventSourcedTestKit.runCommand(Scheduler.Reschedule("foo", _))
+      val result = eventSourcedTestKit.runCommand(Scheduler.Reschedule("foo", 1.hour.toMillis, _))
       result.reply.isError shouldBe true
     }
 
