@@ -27,7 +27,7 @@ class SchedulerSpec extends ScalaTestWithActorTestKit(EventSourcedBehaviorTestKi
 
   private val eventSourcedTestKit = EventSourcedBehaviorTestKit[Scheduler.Command, Scheduler.Event, Scheduler.State](
     system,
-    Scheduler(identifier)
+    Scheduler(identifier, Scheduler.Tags(0))
   )
 
   override protected def beforeEach(): Unit = {
