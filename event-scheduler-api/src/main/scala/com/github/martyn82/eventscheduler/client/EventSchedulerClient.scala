@@ -2,15 +2,28 @@ package com.github.martyn82.eventscheduler.client
 
 import akka.actor.typed.ActorSystem
 import akka.grpc.GrpcClientSettings
-import com.github.martyn82.eventscheduler.client.EventSchedulerClient.{ScheduleToken, Timestamp}
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerClient, RescheduleEventRequest, ScheduleEventRequest, ScheduleToken => GrpcScheduleToken}
+import com.github.martyn82.eventscheduler.client.EventSchedulerClient.{EventEnvelope, ScheduleToken, Timestamp}
+import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerClient, Event, MetaDataValue, RescheduleEventRequest, ScheduleEventRequest, ScheduleToken => GrpcScheduleToken}
 import com.google.protobuf.timestamp.{Timestamp => GrpcTimestamp}
+import com.google.protobuf.any.{Any => GrpcAny}
 
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 object EventSchedulerClient {
   type Timestamp = Long
   type ScheduleToken = String
+
+  final case class EventEnvelope(
+    messageIdentifier: String,
+    aggregateIdentifier: String,
+    aggregateType: String,
+    aggregateSequenceNumber: Long,
+    timestamp: Instant,
+    payloadRevision: String,
+    payload: Any,
+    metaData: Map[String, Any]
+  )
 }
 
 class EventSchedulerClient(host: String, port: Int, useTls: Boolean)(implicit system: ActorSystem[_]) {
@@ -22,10 +35,22 @@ class EventSchedulerClient(host: String, port: Int, useTls: Boolean)(implicit sy
 
   private val client = DefaultEventSchedulerClient(settings)
 
-  def scheduleEvent(event: String, at: Timestamp): Future[ScheduleToken] =
+  def scheduleEvent(event: EventEnvelope, at: Timestamp): Future[ScheduleToken] =
     client.scheduleEvent(
       ScheduleEventRequest.of(
-        event,
+        Some(
+          Event.of(
+            event.messageIdentifier,
+            event.aggregateIdentifier,
+            event.aggregateSequenceNumber,
+            event.aggregateType,
+            Some(GrpcTimestamp.of(event.timestamp.getEpochSecond, 0)),
+            None,
+            event.payloadRevision,
+            Map.empty[String, MetaDataValue],
+            snapshot = false
+          )
+        ),
         Some(GrpcTimestamp.of(at, 0))
       )
     ).map(_.token.get.token)

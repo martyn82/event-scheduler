@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package com.github.martyn82.eventscheduler.grpc;
 
-import "google/protobuf/any.proto";
+import "event.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
@@ -14,7 +14,7 @@ service EventScheduler {
 }
 
 message ScheduleEventRequest {
-  string event = 1;
+  Event event = 1;
   google.protobuf.Timestamp at = 2;
 }
 
