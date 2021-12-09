@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package com.github.martyn82.eventscheduler.grpc;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+
+service EventScheduler {
+  rpc ScheduleEvent(ScheduleEventRequest) returns (ScheduleEventResponse);
+  rpc RescheduleEvent(RescheduleEventRequest) returns (RescheduleEventResponse);
+  rpc CancelEvent(CancelEventRequest) returns (CancelEventResponse);
+}
+
+message ScheduleEventRequest {
+  string event = 1;
+  google.protobuf.Timestamp at = 2;
+}
+
+message ScheduleEventResponse {
+  ScheduleToken token = 1;
+}
+
+message RescheduleEventRequest {
+  ScheduleToken token = 1;
+  google.protobuf.Timestamp at = 2;
+}
+
+message RescheduleEventResponse {
+  ScheduleToken token = 1;
+}
+
+message CancelEventRequest {
+  ScheduleToken token = 1;
+}
+
+message CancelEventResponse {}
+
+message ScheduleToken {
+  string token = 1;
+}
