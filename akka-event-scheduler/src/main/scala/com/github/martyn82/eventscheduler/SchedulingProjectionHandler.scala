@@ -7,7 +7,7 @@ import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.projection.eventsourced.EventEnvelope
 import akka.projection.slick.SlickHandler
 import akka.util.Timeout
-
+import org.slf4j.{Logger, LoggerFactory}
 import slick.dbio.DBIO
 
 import scala.collection._
@@ -19,6 +19,7 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
                                  (implicit ec: ExecutionContext) extends SlickHandler[EventEnvelope[Scheduler.Event]] {
   private implicit val timeout: Timeout = Timeout(30 seconds)
 
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
   private val planned: mutable.Map[Scheduler.Token, Cancellable] = mutable.Map.empty
 
   override def process(envelope: EventEnvelope[Scheduler.Event]): DBIO[Done] = envelope.event match {
@@ -37,6 +38,8 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
     })
 
     planned.put(event.token, cancellable)
+    logger.info(s"Scheduled: ${event.token}")
+
     DBIO.successful(Done)
   }
 
@@ -45,11 +48,13 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
 
   private def onCanceled(event: Scheduler.Canceled): DBIO[Done] = {
     planned.remove(event.token).map(_.cancel())
+    logger.info(s"Canceled: ${event.token}")
     DBIO.successful(Done)
   }
 
   private def onExpired(event: Scheduler.Expired): DBIO[Done] = {
     planned.remove(event.token).map(_.cancel())
+    logger.info(s"Expired: ${event.token}")
     DBIO.successful(Done)
   }
 }
