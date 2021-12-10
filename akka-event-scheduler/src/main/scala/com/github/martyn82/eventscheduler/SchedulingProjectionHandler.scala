@@ -39,7 +39,7 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
 
   private def onScheduled(event: Scheduler.Scheduled): Future[Done] = {
     plan(event.token, event.at)
-    repo.store(Schedule(event.token, event.event, event.at, Status.Scheduled))
+    repo.store(Schedule(event.token, event.at, Status.Scheduled))
 
     logger.info(s"Scheduled: ${event.token}")
     Future.successful(Done)

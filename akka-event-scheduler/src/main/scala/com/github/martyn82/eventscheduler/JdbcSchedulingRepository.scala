@@ -10,7 +10,6 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
     sql"""
          | CREATE TABLE IF NOT EXISTS public.schedule (
          |   token VARCHAR(255) NOT NULL,
-         |   event text NOT NULL,
          |   timestamp INT NOT NULL,
          |   status VARCHAR(64) NOT NULL,
          |   PRIMARY KEY (token));
@@ -21,8 +20,8 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
 
   override def store(schedule: Schedule): Unit = {
     sql"""
-       | INSERT INTO schedule (token, event, timestamp, status)
-       |   VALUES (${schedule.token}, ${schedule.event.toString}, ${schedule.at}, ${schedule.status.toString})
+       | INSERT INTO schedule (token, timestamp, status)
+       |   VALUES (${schedule.token}, ${schedule.at}, ${schedule.status.toString})
        |   ON CONFLICT (token) DO UPDATE SET status = ${schedule.status.toString}
        |""".stripMargin
       .executeUpdate()
@@ -42,11 +41,10 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
   }
 
   override def get(token: Token): Option[Schedule] = {
-    sql"""SELECT event, timestamp, status FROM schedule WHERE token = $token"""
+    sql"""SELECT timestamp, status FROM schedule WHERE token = $token"""
       .map { result =>
         Schedule(
           token,
-          result.string("event"),
           result.long("timestamp"),
           Status.withName(result.string("status"))
         )
@@ -56,11 +54,10 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
   }
 
   override def getScheduled: Seq[Schedule] = {
-    sql"""SELECT token, event, timestamp, status FROM schedule WHERE status = ${Status.Scheduled.toString}"""
+    sql"""SELECT token, timestamp, status FROM schedule WHERE status = ${Status.Scheduled.toString}"""
       .map { result =>
         Schedule(
           result.string("token"),
-          result.string("event"),
           result.long("timestamp"),
           Status.withName(result.string("status"))
         )
