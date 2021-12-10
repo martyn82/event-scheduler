@@ -5,40 +5,37 @@ lazy val AkkaGrpcVersion = "2.1.1"
 lazy val AkkaProjectionVersion = "1.2.2"
 lazy val SlickVersion = "3.3.3"
 lazy val Slf4jVersion = "1.7.32"
+lazy val ScalikeJdbcVersion = "3.5.0"
 
-lazy val commonSettings = Seq(
-  organization := "com.github.martyn82",
-  organizationName := "martyn82",
-  organizationHomepage := Some(url("https://github.com/martyn82")),
+ThisBuild / organization := "com.github.martyn82"
+ThisBuild / organizationName := "martyn82"
+ThisBuild / organizationHomepage := Some(url("https://github.com/martyn82"))
 
-  scalaVersion := "2.13.7",
-  version := "0.1.0-SNAPSHOT",
-  startYear := Some(2021),
+ThisBuild / scalaVersion := "2.13.7"
+ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / startYear := Some(2021)
 
-  scalacOptions ++= Seq(
-    "-feature",
-    "-deprecation",
-    "-language:implicitConversions",
-    "-language:postfixOps",
-    "-Xlint",
-    "-Ywarn-dead-code",
-    "-Ywarn-numeric-widen"
-  ),
-
-  libraryDependencies ++= Seq(
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
-    "ch.qos.logback" % "logback-classic" % "1.2.3",
-
-    "org.mockito" % "mockito-core" % "4.1.0" % Test,
-    "org.scalatest" %% "scalatest" % "3.2.10" % Test,
-    "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
-    "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test,
-    "com.lightbend.akka" %% "akka-projection-testkit" % AkkaProjectionVersion % Test,
-    "com.typesafe.akka" %% "akka-stream-testkit" % AkkaVersion % Test,
-  )
+ThisBuild / scalacOptions ++= Seq(
+  "-feature",
+  "-deprecation",
+  "-language:implicitConversions",
+  "-language:postfixOps",
+  "-Xlint",
+  "-Ywarn-dead-code",
+  "-Ywarn-numeric-widen"
 )
 
-lazy val `event-scheduler` = (project in file("."))
+ThisBuild / libraryDependencies ++= Seq(
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
+  "ch.qos.logback" % "logback-classic" % "1.2.7",
+
+  "org.mockito" % "mockito-core" % "4.1.0" % Test,
+  "org.scalatest" %% "scalatest" % "3.2.10" % Test,
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
+  "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test,
+  "com.lightbend.akka" %% "akka-projection-testkit" % AkkaProjectionVersion % Test,
+  "com.typesafe.akka" %% "akka-stream-testkit" % AkkaVersion % Test,
+)
 
 lazy val `event-scheduler-service` = project
   .dependsOn(
@@ -46,8 +43,6 @@ lazy val `event-scheduler-service` = project
     `akka-event-scheduler`
   )
   .settings(
-    commonSettings,
-
     name := "event-scheduler",
 
     libraryDependencies ++= Seq(
@@ -65,8 +60,6 @@ lazy val `event-scheduler-service` = project
 
 lazy val `akka-event-scheduler` = project
   .settings(
-    commonSettings,
-
     name := "akka-event-scheduler",
 
     libraryDependencies ++= Seq(
@@ -87,14 +80,16 @@ lazy val `akka-event-scheduler` = project
       "com.typesafe.slick" %% "slick-hikaricp" % SlickVersion,
 
       "org.postgresql" % "postgresql" % "42.3.1",
+      "org.scalikejdbc" %% "scalikejdbc" % ScalikeJdbcVersion,
+      "org.scalikejdbc" %% "scalikejdbc-config" % ScalikeJdbcVersion,
+
+      "org.scalikejdbc" %% "scalikejdbc-test" % ScalikeJdbcVersion % Test,
     )
   )
 
 lazy val `event-scheduler-api` = project
   .enablePlugins(AkkaGrpcPlugin)
   .settings(
-    commonSettings,
-
     name := "event-scheduler-api",
 
     akkaGrpcCodeGeneratorSettings += "flat_package",
@@ -111,8 +106,6 @@ lazy val `event-scheduler-client` = project
     `event-scheduler-api`
   )
   .settings(
-    commonSettings,
-
     name := "event-scheduler-client",
 
     libraryDependencies ++= Seq(
