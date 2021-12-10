@@ -8,7 +8,6 @@ import akka.projection.eventsourced.EventEnvelope
 import akka.projection.jdbc.scaladsl.JdbcHandler
 import akka.util.Timeout
 import com.github.martyn82.eventscheduler.Scheduler.{Timestamp, Token}
-import com.github.martyn82.eventscheduler.SchedulingProjection.ScalikeJdbcSession
 import com.github.martyn82.eventscheduler.SchedulingRepository.{Schedule, Status}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -39,7 +38,7 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
 
   private def onScheduled(event: Scheduler.Scheduled): Future[Done] = {
     plan(event.token, event.at)
-    repo.store(Schedule(event.token, event.at, Status.Scheduled))
+    repo.store(Schedule(event.token, event.at, Status.Scheduled, serialize(event.event)))
 
     logger.info(s"Scheduled: ${event.token}")
     Future.successful(Done)
@@ -75,4 +74,7 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
 
     planned.put(token, cancellable)
   }
+
+  private def serialize(o: Any): String =
+    JsonUtil.toJson(o)
 }

@@ -20,7 +20,8 @@ object Client extends App {
     0L,
     Instant.now(),
     "1.0",
-    "blabla",
+    "type.googleapis.com/google.protobuf.StringValue",
+    "payload".getBytes,
     Map.empty[String, Any]
   )
 

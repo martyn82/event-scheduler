@@ -4,18 +4,14 @@ import akka.actor.typed.{ActorSystem, Scheduler}
 import akka.cluster.sharding.typed.ShardedDaemonProcessSettings
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
-import akka.japi.function
 import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
 import akka.persistence.query.Offset
 import akka.projection.{ProjectionBehavior, ProjectionId}
 import akka.projection.eventsourced.EventEnvelope
 import akka.projection.eventsourced.scaladsl.EventSourcedProvider
-import akka.projection.jdbc.JdbcSession
 import akka.projection.jdbc.scaladsl.JdbcProjection
 import akka.projection.scaladsl.ExactlyOnceProjection
-import scalikejdbc.DB
 
-import java.sql.Connection
 import scala.concurrent.ExecutionContext
 
 object SchedulingProjection {
@@ -58,37 +54,5 @@ object SchedulingProjection {
       handler         = () => handler,
       sessionFactory = () => new ScalikeJdbcSession()
     )(system)
-  }
-
-  object ScalikeJdbcSession {
-    def withSession[R](f: ScalikeJdbcSession => R): R = {
-      val session = new ScalikeJdbcSession
-      try {
-        f(session)
-      } finally {
-        session.close()
-      }
-    }
-  }
-
-  final class ScalikeJdbcSession extends JdbcSession {
-    private lazy val db: DB = init
-
-    private def init: DB = {
-      val db = DB.connect()
-      db.autoClose(false)
-      db
-    }
-
-    override def withConnection[Result](func: function.Function[Connection, Result]): Result = {
-      db.begin()
-      db.withinTxWithConnection(func(_))
-    }
-
-    override def commit(): Unit = db.commit()
-
-    override def rollback(): Unit = db.rollback()
-
-    override def close(): Unit = db.close()
   }
 }

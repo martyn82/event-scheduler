@@ -13,8 +13,8 @@ message Event {
   int64 aggregate_sequence_number = 3;
   string aggregate_type = 4;
   google.protobuf.Timestamp timestamp = 5;
-  google.protobuf.Any payload = 6;
-  string payload_revision = 7;
+  string payload_revision = 6;
+  google.protobuf.Any payload = 7;
   map<string, MetaDataValue> meta_data = 8;
   bool snapshot = 9;
 }

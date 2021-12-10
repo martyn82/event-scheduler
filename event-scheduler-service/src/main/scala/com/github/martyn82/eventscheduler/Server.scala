@@ -28,6 +28,7 @@ object Server extends App {
   repo.init()
 
   SchedulingProjection.init(sys, sharding, sys.scheduler, repo)(sys.executionContext)
+  PublishingProjection.init(sys, repo)
 
   val grpcConfig = config.getConfig("grpc.server")
   val server = new EventSchedulerServer(grpcConfig.getString("host"), grpcConfig.getInt("port"), sharding)

@@ -4,6 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.grpc.GrpcClientSettings
 import com.github.martyn82.eventscheduler.client.EventSchedulerClient.{EventEnvelope, ScheduleToken, Timestamp}
 import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerClient, Event, MetaDataValue, RescheduleEventRequest, ScheduleEventRequest, ScheduleToken => GrpcScheduleToken}
+import com.google.protobuf.ByteString
 import com.google.protobuf.timestamp.{Timestamp => GrpcTimestamp}
 import com.google.protobuf.any.{Any => GrpcAny}
 
@@ -21,7 +22,8 @@ object EventSchedulerClient {
     aggregateSequenceNumber: Long,
     timestamp: Instant,
     payloadRevision: String,
-    payload: Any,
+    payloadTypeUrl: String,
+    payloadBytes: Array[Byte],
     metaData: Map[String, Any]
   )
 }
@@ -44,14 +46,23 @@ class EventSchedulerClient(host: String, port: Int, useTls: Boolean)(implicit sy
             event.aggregateIdentifier,
             event.aggregateSequenceNumber,
             event.aggregateType,
-            Some(GrpcTimestamp.of(event.timestamp.getEpochSecond, 0)),
-            None,
+            Some(
+              GrpcTimestamp.of(event.timestamp.getEpochSecond, 0)
+            ),
             event.payloadRevision,
+            Some(
+              GrpcAny.of(
+                event.payloadTypeUrl,
+                ByteString.copyFrom(event.payloadBytes)
+              )
+            ),
             Map.empty[String, MetaDataValue],
             snapshot = false
           )
         ),
-        Some(GrpcTimestamp.of(at, 0))
+        Some(
+          GrpcTimestamp.of(at, 0)
+        )
       )
     ).map(_.token.get.token)
 

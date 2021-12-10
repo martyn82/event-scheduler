@@ -4,16 +4,13 @@ import akka.Done
 import akka.actor.Cancellable
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
-import akka.japi.function
 import akka.persistence.query.Offset
 import akka.projection.ProjectionId
 import akka.projection.eventsourced.EventEnvelope
-import akka.projection.jdbc.JdbcSession
 import akka.projection.scaladsl.Handler
 import akka.projection.testkit.scaladsl.{ProjectionTestKit, TestProjection, TestSourceProvider}
 import akka.stream.scaladsl.Source
 import com.github.martyn82.eventscheduler.Scheduler.Token
-import com.github.martyn82.eventscheduler.SchedulingProjection.ScalikeJdbcSession
 import com.github.martyn82.eventscheduler.SchedulingProjectionHandlerSpec.{FakeCancellable, FakeProjectionHandler, FakeSchedulingRepository}
 import com.github.martyn82.eventscheduler.SchedulingRepository.Schedule
 import com.github.martyn82.eventscheduler.SchedulingRepository.Status.Status
@@ -24,12 +21,9 @@ import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpecLike
 
-import java.sql.Connection
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-
-import scala.reflect.ClassTag
 
 object SchedulingProjectionHandlerSpec {
   val config: Config = ConfigFactory.parseString(
@@ -42,13 +36,6 @@ object SchedulingProjectionHandlerSpec {
     override def cancel(): Boolean = true
     override def isCancelled: Boolean = false
   }
-
-//  class FakeJdbcSession extends JdbcSession {
-//    override def withConnection[Result](func: function.Function[Connection, Result]): Result = ???
-//    override def commit(): Unit = ???
-//    override def rollback(): Unit = ???
-//    override def close(): Unit = ???
-//  }
 
   class FakeProjectionHandler(inner: SchedulingProjectionHandler, session: ScalikeJdbcSession) extends Handler[EventEnvelope[Scheduler.Event]] {
     override def process(envelope: EventEnvelope[Scheduler.Event]): Future[Done] = {
