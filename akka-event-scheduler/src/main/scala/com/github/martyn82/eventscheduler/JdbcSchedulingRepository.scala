@@ -5,32 +5,24 @@ import com.github.martyn82.eventscheduler.SchedulingRepository.Status.Status
 import com.github.martyn82.eventscheduler.SchedulingRepository.{Schedule, Status}
 import scalikejdbc.{DBSession, scalikejdbcSQLInterpolationImplicitDef}
 
-import scala.util.{Failure, Try}
-
 class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRepository {
   def init(): Unit = {
-    Try {
-      sql"""
-           | CREATE TABLE IF NOT EXISTS public.schedule (
-           |   token VARCHAR(255) NOT NULL,
-           |   event VARCHAR(255) NOT NULL,
-           |   timestamp INT NOT NULL,
-           |   status VARCHAR(64) NOT NULL,
-           |   PRIMARY KEY (token));
-           |""".stripMargin
-        .execute()
-        .apply()
-    } match {
-      case Failure(exception) =>
-        println(exception)
-      case _ => ()
-    }
+    sql"""
+         | CREATE TABLE IF NOT EXISTS public.schedule (
+         |   token VARCHAR(255) NOT NULL,
+         |   event text NOT NULL,
+         |   timestamp INT NOT NULL,
+         |   status VARCHAR(64) NOT NULL,
+         |   PRIMARY KEY (token));
+         |""".stripMargin
+      .execute()
+      .apply()
   }
 
   override def store(schedule: Schedule): Unit = {
     sql"""
        | INSERT INTO schedule (token, event, timestamp, status)
-       |   VALUES (${schedule.token}, ${schedule.event}, ${schedule.at}, ${schedule.status.toString})
+       |   VALUES (${schedule.token}, ${schedule.event.toString}, ${schedule.at}, ${schedule.status.toString})
        |   ON CONFLICT (token) DO UPDATE SET status = ${schedule.status.toString}
        |""".stripMargin
       .executeUpdate()
@@ -60,6 +52,20 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
         )
       }
       .toOption()
+      .apply()
+  }
+
+  override def getScheduled: Seq[Schedule] = {
+    sql"""SELECT token, event, timestamp, status FROM schedule WHERE status = ${Status.Scheduled.toString}"""
+      .map { result =>
+        Schedule(
+          result.string("token"),
+          result.string("event"),
+          result.long("timestamp"),
+          Status.withName(result.string("status"))
+        )
+      }
+      .toList()
       .apply()
   }
 }

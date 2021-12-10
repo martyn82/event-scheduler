@@ -63,5 +63,17 @@ class JdbcSchedulingRepositorySpec extends FixtureAnyWordSpecLike with AutoRollb
 
       repo.get(token) should equal(None)
     }
+
+    "retrieve all scheduled events" in { implicit session =>
+      val token1 = "token1"
+      val token2 = "token2"
+      val event = "event"
+      val at = 12345
+
+      repo.store(Schedule(token1, event, at, Status.Scheduled))
+      repo.store(Schedule(token2, event, at, Status.Canceled))
+
+      repo.getScheduled should equal(Seq(Schedule(token1, event, at, Status.Scheduled)))
+    }
   }
 }

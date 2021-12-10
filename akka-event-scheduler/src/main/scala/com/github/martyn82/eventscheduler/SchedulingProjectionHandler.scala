@@ -7,6 +7,7 @@ import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.projection.eventsourced.EventEnvelope
 import akka.projection.jdbc.scaladsl.JdbcHandler
 import akka.util.Timeout
+import com.github.martyn82.eventscheduler.Scheduler.{Timestamp, Token}
 import com.github.martyn82.eventscheduler.SchedulingProjection.ScalikeJdbcSession
 import com.github.martyn82.eventscheduler.SchedulingRepository.{Schedule, Status}
 import org.slf4j.{Logger, LoggerFactory}
@@ -30,16 +31,15 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
     case event: Scheduler.Expired     => onExpired(event)
   }
 
+  def init(): Unit = {
+    repo.getScheduled.foreach { scheduled =>
+      plan(scheduled.token, scheduled.at)
+    }
+  }
+
   private def onScheduled(event: Scheduler.Scheduled): Future[Done] = {
-    val in = Duration(Instant.now().getEpochSecond - event.at, SECONDS)
-
-    val cancellable = scheduler.scheduleOnce(in, () => {
-      sharding.entityRefFor(Scheduler.EntityKey, event.token)
-        .askWithStatus(Scheduler.Expire(event.token, _))
-    })
-
+    plan(event.token, event.at)
     repo.store(Schedule(event.token, event.event, event.at, Status.Scheduled))
-    planned.put(event.token, cancellable)
 
     logger.info(s"Scheduled: ${event.token}")
     Future.successful(Done)
@@ -62,5 +62,17 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
 
     logger.info(s"Expired: ${event.token}")
     Future.successful(Done)
+  }
+
+  private def plan(token: Token, at: Timestamp): Unit = {
+    val in = Duration(at - Instant.now().getEpochSecond, SECONDS)
+    logger.info(s"Planned in $in seconds")
+
+    val cancellable = scheduler.scheduleOnce(in, () => {
+      sharding.entityRefFor(Scheduler.EntityKey, token)
+        .askWithStatus(Scheduler.Expire(token, _))
+    })
+
+    planned.put(token, cancellable)
   }
 }

@@ -26,7 +26,7 @@ object Client extends App {
 
   for {
     token <- client.scheduleEvent(event, Instant.now().getEpochSecond + 5)
-    _ <- client.cancelEvent(token)
+//    _ <- client.cancelEvent(token)
   } yield {
     println(token)
   }

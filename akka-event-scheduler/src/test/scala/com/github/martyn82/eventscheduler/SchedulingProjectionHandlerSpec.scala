@@ -62,6 +62,7 @@ object SchedulingProjectionHandlerSpec {
     override def store(schedule: Schedule): Unit = ???
     override def update(token: Token, status: Status): Unit = ???
     override def delete(token: Token): Unit = ???
+    override def getScheduled: Seq[Schedule] = ???
   }
 }
 

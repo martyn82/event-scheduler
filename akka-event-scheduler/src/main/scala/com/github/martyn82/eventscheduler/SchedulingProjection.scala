@@ -50,6 +50,7 @@ object SchedulingProjection {
     )
 
     val handler = new SchedulingProjectionHandler(scheduler, sharding, repo)
+    handler.init()
 
     JdbcProjection.exactlyOnce(
       projectionId    = ProjectionId(Name, tag),
@@ -71,7 +72,9 @@ object SchedulingProjection {
   }
 
   final class ScalikeJdbcSession extends JdbcSession {
-    def db: DB = {
+    private lazy val db: DB = init
+
+    private def init: DB = {
       val db = DB.connect()
       db.autoClose(false)
       db

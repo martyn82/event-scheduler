@@ -24,4 +24,5 @@ trait SchedulingRepository {
   def update(token: Token, status: Status): Unit
   def delete(token: Token): Unit
   def get(token: Token): Option[Schedule]
+  def getScheduled: Seq[Schedule]
 }
