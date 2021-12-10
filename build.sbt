@@ -38,9 +38,9 @@ lazy val commonSettings = Seq(
   )
 )
 
-lazy val root = (project in file("."))
+lazy val `event-scheduler` = (project in file("."))
 
-lazy val `event-scheduler` = project
+lazy val `event-scheduler-service` = project
   .dependsOn(
     `event-scheduler-api`,
     `akka-event-scheduler`
