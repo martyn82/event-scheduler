@@ -5,7 +5,7 @@ import com.github.martyn82.eventscheduler.Scheduler.{Token, Timestamp}
 object SchedulingRepository {
   import SchedulingRepository.Status.Status
 
-  final case class Schedule(token: Token, at: Timestamp, status: Status, event: String)
+  final case class Schedule(token: Token, at: Timestamp, status: Status, eventType: String, eventData: Array[Byte])
 
   object Status extends Enumeration {
     type Status = Value

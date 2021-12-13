@@ -10,7 +10,7 @@ import akka.projection.eventsourced.EventEnvelope
 import akka.projection.scaladsl.Handler
 import akka.projection.testkit.scaladsl.{ProjectionTestKit, TestProjection, TestSourceProvider}
 import akka.stream.scaladsl.Source
-import com.github.martyn82.eventscheduler.Scheduler.Token
+import com.github.martyn82.eventscheduler.Scheduler.{EventData, Token}
 import com.github.martyn82.eventscheduler.SchedulingProjectionHandlerSpec.{FakeCancellable, FakeProjectionHandler, FakeSchedulingRepository}
 import com.github.martyn82.eventscheduler.SchedulingRepository.Schedule
 import com.github.martyn82.eventscheduler.SchedulingRepository.Status.Status
@@ -78,7 +78,7 @@ class SchedulingProjectionHandlerSpec extends ScalaTestWithActorTestKit(Scheduli
 
   "SchedulingProjectionHandler" should {
     "schedule expiry on event scheduled" in {
-      val event = Scheduler.Scheduled("token", "foo", Instant.now().getEpochSecond)
+      val event = Scheduler.Scheduled("token", EventData("type", "data".getBytes), Instant.now().getEpochSecond)
 
       val sourceProvider = TestSourceProvider(
         sourceEvents = Source(
@@ -101,7 +101,7 @@ class SchedulingProjectionHandlerSpec extends ScalaTestWithActorTestKit(Scheduli
     }
 
     "cancel scheduled event on event canceled" in {
-      val scheduled = Scheduler.Scheduled("token", "foo", Instant.now().getEpochSecond + 5000)
+      val scheduled = Scheduler.Scheduled("token", EventData("type", "data".getBytes), Instant.now().getEpochSecond + 5000)
       val canceled = Scheduler.Canceled("token")
 
       val sourceProvider = TestSourceProvider(
@@ -129,7 +129,7 @@ class SchedulingProjectionHandlerSpec extends ScalaTestWithActorTestKit(Scheduli
     }
 
     "cancel scheduled event on expiry" in {
-      val scheduled = Scheduler.Scheduled("token", "foo", Instant.now().getEpochSecond + 1)
+      val scheduled = Scheduler.Scheduled("token", EventData("type", "data".getBytes), Instant.now().getEpochSecond + 1)
 
       val sourceProvider = TestSourceProvider(
         sourceEvents = Source(

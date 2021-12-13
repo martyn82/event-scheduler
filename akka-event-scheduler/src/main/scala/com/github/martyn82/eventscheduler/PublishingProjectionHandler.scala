@@ -1,7 +1,6 @@
 package com.github.martyn82.eventscheduler
 
 import akka.Done
-import akka.actor.typed.ActorSystem
 import akka.projection.eventsourced.EventEnvelope
 import akka.projection.scaladsl.Handler
 import org.slf4j.{Logger, LoggerFactory}
@@ -19,11 +18,8 @@ class PublishingProjectionHandler(repo: SchedulingRepository) extends Handler[Ev
   private def publish(event: Scheduler.Expired): Future[Done] = {
     logger.info("PUBLISH EVENT ON EXPIRY TIME")
     repo.get(event.token).foreach { e =>
-      logger.info(serialize(e.event))
+      logger.info(e.eventType + ": " + e.eventData)
     }
     Future.successful(Done)
   }
-
-  private def serialize(o: Any): String =
-    JsonUtil.toJson(o)
 }

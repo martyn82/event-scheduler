@@ -15,25 +15,29 @@ object Scheduler {
   val EntityKey: EntityTypeKey[Command] = EntityTypeKey[Command]("Scheduler")
   val Tags: Vector[String] = Vector.tabulate(1) { i => s"scheduler-$i" }
 
+  final case class EventData(eventType: String, eventData: Array[Byte])
+
   sealed trait Command extends Serializable
 
-  final case class Schedule(event: Any, at: Timestamp, replyTo: ActorRef[StatusReply[Token]]) extends Command
+  final case class Schedule(event: EventData, at: Timestamp, replyTo: ActorRef[StatusReply[Token]]) extends Command
   final case class Reschedule(token: Token, at: Timestamp, replyTo: ActorRef[StatusReply[Token]]) extends Command
   final case class Cancel(token: Token, replyTo: ActorRef[StatusReply[Done]]) extends Command
   final case class Expire(token: Token, replyTo: ActorRef[StatusReply[Done]]) extends Command
 
-  sealed trait Event extends Serializable
+  sealed trait Event extends Serializable {
+    val token: Token
+  }
 
-  final case class Scheduled(token: Token, event: Any, at: Timestamp) extends Event
+  final case class Scheduled(token: Token, event: EventData, at: Timestamp) extends Event
   final case class Canceled(token: Token) extends Event
-  final case class Rescheduled(token: Token, event: Any, at: Timestamp) extends Event
+  final case class Rescheduled(token: Token, event: EventData, at: Timestamp) extends Event
   final case class Expired(token: Token) extends Event
 
   sealed trait State extends Serializable
 
   object State {
     final case class Unscheduled(token: Token) extends State
-    final case class Scheduled(token: Token, event: Any, at: Timestamp) extends State
+    final case class Scheduled(token: Token, event: EventData, at: Timestamp) extends State
     final case class Canceled(token: Token) extends State
     final case class Expired(token: Token) extends State
   }

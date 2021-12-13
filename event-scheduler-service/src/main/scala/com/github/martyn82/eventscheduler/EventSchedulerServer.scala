@@ -1,22 +1,33 @@
 package com.github.martyn82.eventscheduler
 
+import akka.NotUsed
 import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.grpc.GrpcServiceException
 import akka.grpc.scaladsl.ServiceHandler
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
+import akka.persistence.query.Offset
+import akka.projection.eventsourced.EventEnvelope
+import akka.projection.eventsourced.scaladsl.EventSourcedProvider
+import akka.projection.scaladsl.SourceProvider
+import akka.stream.scaladsl.Source
 import akka.util.Timeout
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventResponse, EventScheduler, EventSchedulerHandler, RescheduleEventRequest, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventResponse, ScheduleToken}
+import com.github.martyn82.eventscheduler.Scheduler.EventData
+import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventResponse, Event, EventScheduler, EventSchedulerHandler, RescheduleEventRequest, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventResponse, ScheduleToken, SubscribeRequest}
+import com.google.protobuf.ByteString
+import com.google.protobuf.any.{Any => GrpcAny}
+import com.google.protobuf.timestamp.Timestamp
 import io.grpc.Status
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.UUID
-import scala.concurrent.{ExecutionContext, Future, TimeoutException}
+import scala.concurrent.{Await, ExecutionContext, Future, TimeoutException}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-class EventSchedulerServer(interface: String, port: Int, sharding: ClusterSharding)(implicit system: ActorSystem[_]) {
+class EventSchedulerServer(interface: String, port: Int, sharding: ClusterSharding, repo: SchedulingRepository)(implicit system: ActorSystem[_]) {
   private implicit val ec: ExecutionContext = system.executionContext
   private implicit val timeout: Timeout = Timeout(30 seconds)
 
@@ -53,7 +64,7 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
       val reply = sharding.entityRefFor(Scheduler.EntityKey, generateToken())
         .askWithStatus(
           Scheduler.Schedule(
-            in.event,
+            in.event.map(GrpcAny.pack(_)).map(a => EventData(a.typeUrl, a.value.toByteArray)).get,
             in.at.get.seconds,
             _
           )
@@ -100,6 +111,30 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
         reply.map(_ => CancelEventResponse.of())
       )
     }
+
+    override def subscribe(in: SubscribeRequest): Source[Event, NotUsed] = {
+      val sourceProvider: SourceProvider[Offset, EventEnvelope[Scheduler.Event]] =
+        EventSourcedProvider.eventsByTag[Scheduler.Event](
+          system = system,
+          readJournalPluginId = JdbcReadJournal.Identifier,
+          tag = Scheduler.Tags(0)
+        )
+
+      Await.result(
+        sourceProvider.source { () =>
+          Future.successful(
+            Some(Offset.sequence(0))
+          )
+        },
+        10 seconds
+      )
+    }.map { envelope =>
+      repo.get(envelope.event.token)
+        .map { schedule =>
+          GrpcAny.of(schedule.eventType, ByteString.copyFrom(schedule.eventData))
+        }
+        .map(_.unpack(Event))
+    }.filter(_.nonEmpty).map(_.get)
 
     private def convertError[T](response: Future[T]): Future[T] =
       response.recoverWith {

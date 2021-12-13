@@ -24,10 +24,10 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
   private val planned: mutable.Map[Scheduler.Token, Cancellable] = mutable.Map.empty
 
   override def process(session: ScalikeJdbcSession, envelope: EventEnvelope[Scheduler.Event]): Unit = envelope.event match {
-    case event: Scheduler.Scheduled   => onScheduled(event)
-    case event: Scheduler.Rescheduled => onRescheduled(event)
-    case event: Scheduler.Canceled    => onCanceled(event)
-    case event: Scheduler.Expired     => onExpired(event)
+    case event: Scheduler.Scheduled     => onScheduled(event)
+    case event: Scheduler.Rescheduled   => onRescheduled(event)
+    case event: Scheduler.Canceled      => onCanceled(event)
+    case event: Scheduler.Expired       => onExpired(event)
   }
 
   def init(): Unit = {
@@ -38,7 +38,7 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
 
   private def onScheduled(event: Scheduler.Scheduled): Future[Done] = {
     plan(event.token, event.at)
-    repo.store(Schedule(event.token, event.at, Status.Scheduled, serialize(event.event)))
+    repo.store(Schedule(event.token, event.at, Status.Scheduled, event.event.eventType, event.event.eventData))
 
     logger.info(s"Scheduled: ${event.token}")
     Future.successful(Done)
@@ -74,7 +74,4 @@ class SchedulingProjectionHandler(scheduler: Scheduler, sharding: ClusterShardin
 
     planned.put(token, cancellable)
   }
-
-  private def serialize(o: Any): String =
-    JsonUtil.toJson(o)
 }

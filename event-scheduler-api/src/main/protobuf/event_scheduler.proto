@@ -11,6 +11,8 @@ service EventScheduler {
   rpc ScheduleEvent(ScheduleEventRequest) returns (ScheduleEventResponse);
   rpc RescheduleEvent(RescheduleEventRequest) returns (RescheduleEventResponse);
   rpc CancelEvent(CancelEventRequest) returns (CancelEventResponse);
+
+  rpc Subscribe(SubscribeRequest) returns (stream Event);
 }
 
 message ScheduleEventRequest {
@@ -36,6 +38,8 @@ message CancelEventRequest {
 }
 
 message CancelEventResponse {}
+
+message SubscribeRequest {}
 
 message ScheduleToken {
   string token = 1;

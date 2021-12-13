@@ -12,7 +12,8 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
          |   token VARCHAR(255) NOT NULL,
          |   timestamp INT NOT NULL,
          |   status VARCHAR(64) NOT NULL,
-         |   event text NOT NULL,
+         |   eventType VARCHAR(255) NOT NULL,
+         |   eventData bytea NOT NULL,
          |   PRIMARY KEY (token));
          |""".stripMargin
       .execute()
@@ -21,8 +22,8 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
 
   override def store(schedule: Schedule): Unit = {
     sql"""
-       | INSERT INTO schedule (token, timestamp, status, event)
-       |   VALUES (${schedule.token}, ${schedule.at}, ${schedule.status.toString}, ${schedule.event})
+       | INSERT INTO schedule (token, timestamp, status, eventType, eventData)
+       |   VALUES (${schedule.token}, ${schedule.at}, ${schedule.status.toString}, ${schedule.eventType}, ${schedule.eventData})
        |   ON CONFLICT (token) DO UPDATE SET status = ${schedule.status.toString}
        |""".stripMargin
       .executeUpdate()
@@ -42,13 +43,14 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
   }
 
   override def get(token: Token): Option[Schedule] = {
-    sql"""SELECT timestamp, status, event FROM schedule WHERE token = $token"""
+    sql"""SELECT timestamp, status, eventType, eventData FROM schedule WHERE token = $token"""
       .map { result =>
         Schedule(
           token,
           result.long("timestamp"),
           Status.withName(result.string("status")),
-          result.string("event")
+          result.string("eventType"),
+          result.bytes("eventData")
         )
       }
       .toOption()
@@ -56,13 +58,14 @@ class JdbcSchedulingRepository(implicit session: DBSession) extends SchedulingRe
   }
 
   override def getScheduled: Seq[Schedule] = {
-    sql"""SELECT token, timestamp, status, event FROM schedule WHERE status = ${Status.Scheduled.toString}"""
+    sql"""SELECT token, timestamp, status, eventType, eventData FROM schedule WHERE status = ${Status.Scheduled.toString}"""
       .map { result =>
         Schedule(
           result.string("token"),
           result.long("timestamp"),
           Status.withName(result.string("status")),
-          result.string("event")
+          result.string("eventType"),
+          result.bytes("eventData")
         )
       }
       .toList()

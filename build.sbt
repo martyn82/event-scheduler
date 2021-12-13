@@ -102,13 +102,18 @@ lazy val `event-scheduler-api` = project
   )
 
 lazy val `event-scheduler-client` = project
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     `event-scheduler-api`
   )
   .settings(
     name := "event-scheduler-client",
 
+    akkaGrpcCodeGeneratorSettings += "flat_package",
+
     libraryDependencies ++= Seq(
+      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+
       "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
       "com.typesafe.akka" %% "akka-discovery" % AkkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
