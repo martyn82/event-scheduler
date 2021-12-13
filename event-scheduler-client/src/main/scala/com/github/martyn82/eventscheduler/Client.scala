@@ -36,6 +36,8 @@ object Client extends App {
 
           val deadline = event.payload.get.unpack(NewAccountEmailVerificationDeadlinePassed)
           println(deadline)
+
+          println(event)
         }
 
         case _ =>

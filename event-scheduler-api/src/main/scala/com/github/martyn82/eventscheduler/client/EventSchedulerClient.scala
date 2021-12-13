@@ -5,7 +5,7 @@ import akka.actor.typed.ActorSystem
 import akka.grpc.GrpcClientSettings
 import akka.stream.scaladsl.Source
 import com.github.martyn82.eventscheduler.client.EventSchedulerClient.{ScheduleToken, Timestamp}
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerClient, Event, MetaDataValue, RescheduleEventRequest, ScheduleEventRequest, SubscribeRequest, ScheduleToken => GrpcScheduleToken}
+import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerClient, Event, RescheduleEventRequest, ScheduleEventRequest, SubscribeRequest, ScheduleToken => GrpcScheduleToken}
 import com.google.protobuf.timestamp.{Timestamp => GrpcTimestamp}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,7 +32,7 @@ class EventSchedulerClient(host: String, port: Int, useTls: Boolean)(implicit sy
       )
     ).map(_.token.get.token)
 
-  def rescheduleEvent(token: ScheduleToken, event: String, at: Timestamp): Future[ScheduleToken] =
+  def rescheduleEvent(token: ScheduleToken, at: Timestamp): Future[ScheduleToken] =
     client.rescheduleEvent(
       RescheduleEventRequest.of(
         Some(GrpcScheduleToken.of(token)),

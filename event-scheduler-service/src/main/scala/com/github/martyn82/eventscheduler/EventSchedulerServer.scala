@@ -18,7 +18,6 @@ import com.github.martyn82.eventscheduler.Scheduler.EventData
 import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventResponse, Event, EventScheduler, EventSchedulerHandler, RescheduleEventRequest, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventResponse, ScheduleToken, SubscribeRequest}
 import com.google.protobuf.ByteString
 import com.google.protobuf.any.{Any => GrpcAny}
-import com.google.protobuf.timestamp.Timestamp
 import io.grpc.Status
 import org.slf4j.{Logger, LoggerFactory}
 
