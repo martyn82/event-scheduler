@@ -39,7 +39,12 @@ message CancelEventRequest {
 
 message CancelEventResponse {}
 
-message SubscribeRequest {}
+message SubscribeRequest {
+  oneof offset {
+    uint64 sequence_number = 1;
+    google.protobuf.Timestamp timestamp = 2;
+  }
+}
 
 message ScheduleToken {
   string token = 1;

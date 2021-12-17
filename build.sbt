@@ -98,6 +98,8 @@ lazy val `event-scheduler-api` = project
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
 
       "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
+
+      "org.typelevel" %% "cats-core" % "2.7.0",
     )
   )
 

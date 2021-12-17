@@ -15,6 +15,7 @@ import akka.projection.scaladsl.SourceProvider
 import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import com.github.martyn82.eventscheduler.Scheduler.EventData
+import com.github.martyn82.eventscheduler.client.ScheduleEventRequestValidator
 import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventResponse, Event, EventScheduler, EventSchedulerHandler, RescheduleEventRequest, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventResponse, ScheduleToken, SubscribeRequest}
 import com.google.protobuf.ByteString
 import com.google.protobuf.any.{Any => GrpcAny}
@@ -60,14 +61,20 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
 
   class EventSchedulerService(sharding: ClusterSharding, generateToken: TokenGenerator) extends EventScheduler {
     override def scheduleEvent(in: ScheduleEventRequest): Future[ScheduleEventResponse] = {
-      val reply = sharding.entityRefFor(Scheduler.EntityKey, generateToken())
-        .askWithStatus(
-          Scheduler.Schedule(
-            in.event.map(GrpcAny.pack(_)).map(a => EventData(a.typeUrl, a.value.toByteArray)).get,
-            in.at.get.seconds,
-            _
+      val reply = ScheduleEventRequestValidator.validate(in).fold(
+        errors => Future.failed(
+          new GrpcServiceException(Status.INVALID_ARGUMENT.withDescription(errors.head.getMessage))
+        ),
+        v =>
+        sharding.entityRefFor(Scheduler.EntityKey, generateToken())
+          .askWithStatus(
+            Scheduler.Schedule(
+              v.event.map(GrpcAny.pack(_)).map(a => EventData(a.typeUrl, a.value.toByteArray)).get,
+              v.at.get.seconds,
+              _
+            )
           )
-        )
+      )
 
       convertError(
         reply.map { token =>
@@ -122,11 +129,13 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
       Await.result(
         sourceProvider.source { () =>
           Future.successful(
-            Some(Offset.sequence(0))
+            Some(Offset.sequence(in.offset.sequenceNumber.getOrElse(0)))
           )
         },
-        10 seconds
+        1 second
       )
+    }.filter { envelope =>
+      in.offset.timestamp.map(_.seconds).getOrElse(0L) < (envelope.timestamp / 1000).longValue
     }.map { envelope =>
       repo.get(envelope.event.token)
         .map { schedule =>
