@@ -7,3 +7,11 @@ services:
     environment:
       - "POSTGRES_USER=docker"
       - "POSTGRES_PASSWORD=docker"
+
+  buf-lint:
+    image: bufbuild/buf
+    command:
+      - lint
+    working_dir: /workspace
+    volumes:
+      - "./event-scheduler-api/src/main/protobuf:/workspace"
