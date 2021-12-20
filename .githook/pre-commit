@@ -1,1 +1,2 @@
-docker-compose up buf-lint
+docker-compose up buf-lint && \
+    docker-compose up buf-breaking
