@@ -19,6 +19,7 @@ object Server extends App {
 
   DBs.setupAll()
   SchemaUtils.createIfNotExists()(sys)
+  ScalikeJdbcSession.createSchema()
 
   AkkaManagement(sys).start()
   ClusterBootstrap(sys).start()
