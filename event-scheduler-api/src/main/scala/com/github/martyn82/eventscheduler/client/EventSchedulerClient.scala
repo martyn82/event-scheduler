@@ -5,7 +5,7 @@ import akka.actor.typed.ActorSystem
 import akka.grpc.GrpcClientSettings
 import akka.stream.scaladsl.Source
 import com.github.martyn82.eventscheduler.client.EventSchedulerClient.ScheduleToken
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerClient, Event, RescheduleEventRequest, ScheduleEventRequest, SubscribeRequest}
+import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerServiceClient, Event, RescheduleEventRequest, ScheduleEventRequest, SubscribeRequest}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,7 +20,7 @@ class EventSchedulerClient(host: String, port: Int)(implicit system: ActorSystem
     .connectToServiceAt(host, port)
     .withTls(false)
 
-  private val client = DefaultEventSchedulerClient(settings)
+  private val client = DefaultEventSchedulerServiceClient(settings)
 
   def scheduleEvent(request: ScheduleEventRequest): Future[ScheduleToken] =
     client.scheduleEvent(request).map(_.token.get.token)
@@ -32,5 +32,5 @@ class EventSchedulerClient(host: String, port: Int)(implicit system: ActorSystem
     client.cancelEvent(request).map(_ => ())
 
   def subscribe(request: SubscribeRequest): Source[Event, NotUsed] =
-    client.subscribe(request)
+    client.subscribe(request).map(_.getEvent)
 }

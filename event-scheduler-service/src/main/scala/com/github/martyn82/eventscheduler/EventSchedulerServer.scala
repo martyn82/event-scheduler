@@ -16,7 +16,7 @@ import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import com.github.martyn82.eventscheduler.Scheduler.EventData
 import com.github.martyn82.eventscheduler.client.ScheduleEventRequestValidator
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventResponse, Event, EventScheduler, EventSchedulerHandler, RescheduleEventRequest, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventResponse, ScheduleToken, SubscribeRequest}
+import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventResponse, Event, EventSchedulerService, EventSchedulerServiceHandler, RescheduleEventRequest, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventResponse, ScheduleToken, SubscribeRequest, SubscribeResponse}
 import com.google.protobuf.ByteString
 import com.google.protobuf.any.{Any => GrpcAny}
 import io.grpc.Status
@@ -39,7 +39,7 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
   def start(): Future[Http.ServerBinding] = {
     val service: HttpRequest => Future[HttpResponse] =
       ServiceHandler.concatOrNotFound(
-        EventSchedulerHandler.partial(new EventSchedulerService(sharding, tokenGenerator))
+        EventSchedulerServiceHandler.partial(new EventScheduler(sharding, tokenGenerator))
       )
 
     val bound: Future[Http.ServerBinding] = Http(system)
@@ -59,7 +59,7 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
     bound
   }
 
-  class EventSchedulerService(sharding: ClusterSharding, generateToken: TokenGenerator) extends EventScheduler {
+  class EventScheduler(sharding: ClusterSharding, generateToken: TokenGenerator) extends EventSchedulerService {
     override def scheduleEvent(in: ScheduleEventRequest): Future[ScheduleEventResponse] = {
       val reply = ScheduleEventRequestValidator.validate(in).fold(
         errors => Future.failed(
@@ -118,7 +118,7 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
       )
     }
 
-    override def subscribe(in: SubscribeRequest): Source[Event, NotUsed] = {
+    override def subscribe(in: SubscribeRequest): Source[SubscribeResponse, NotUsed] = {
       val sourceProvider: SourceProvider[Offset, EventEnvelope[Scheduler.Event]] =
         EventSourcedProvider.eventsByTag[Scheduler.Event](
           system = system,
@@ -142,7 +142,8 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
           GrpcAny.of(schedule.eventType, ByteString.copyFrom(schedule.eventData))
         }
         .map(_.unpack(Event))
-    }.filter(_.nonEmpty).map(_.get)
+    }.filter(_.nonEmpty)
+      .map(SubscribeResponse.of)
 
     private def convertError[T](response: Future[T]): Future[T] =
       response.recoverWith {
