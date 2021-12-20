@@ -15,3 +15,15 @@ services:
     working_dir: /workspace
     volumes:
       - "./event-scheduler-api/src/main/protobuf:/workspace"
+
+  buf-breaking:
+    image: bufbuild/buf
+    command:
+      - breaking
+      - "--against"
+      - "https://github.com/martyn82/event-scheduler/archive/main.zip#strip_components=1,subdir=event-scheduler-api/src/main/protobuf"
+      - "--config"
+      - "./buf.yaml"
+    working_dir: /workspace
+    volumes:
+      - "./event-scheduler-api/src/main/protobuf:/workspace"

@@ -1,20 +1,20 @@
 syntax = "proto3";
 
-package com.github.martyn82.eventscheduler;
+package com.github.martyn82.eventscheduler.v1;
 
-import "com/github/martyn82/eventscheduler/event.proto";
+import "com/github/martyn82/eventscheduler/v1/event.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
 option java_package = "com.github.martyn82.eventscheduler.grpc";
-option java_outer_classname = "EventSchedulerProto";
+option java_outer_classname = "EventSchedulerServiceProto";
 
-service EventScheduler {
+service EventSchedulerService {
   rpc ScheduleEvent(ScheduleEventRequest) returns (ScheduleEventResponse);
   rpc RescheduleEvent(RescheduleEventRequest) returns (RescheduleEventResponse);
   rpc CancelEvent(CancelEventRequest) returns (CancelEventResponse);
 
-  rpc Subscribe(SubscribeRequest) returns (stream Event);
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
 }
 
 message ScheduleEventRequest {
@@ -46,6 +46,10 @@ message SubscribeRequest {
     uint64 sequence_number = 1;
     google.protobuf.Timestamp timestamp = 2;
   }
+}
+
+message SubscribeResponse {
+  Event event = 1;
 }
 
 message ScheduleToken {
