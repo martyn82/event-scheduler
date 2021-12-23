@@ -1,0 +1,4 @@
+version: v1
+directories:
+  - src/main/protobuf
+  - target/protobuf_external

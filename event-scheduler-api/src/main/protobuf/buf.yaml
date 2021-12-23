@@ -1,6 +1,12 @@
 version: v1
 
+build:
+  excludes:
+    - target/validate
+
 lint:
+  ignore:
+    - validate/validate.proto
   use:
     - DEFAULT
 
