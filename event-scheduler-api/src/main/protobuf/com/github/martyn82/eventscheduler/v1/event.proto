@@ -1,24 +1,25 @@
 syntax = "proto3";
 
-package com.github.martyn82.eventscheduler.v1;
+package github.martyn82.eventscheduler.v1;
 
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
 
 option java_multiple_files = true;
 option java_package = "com.github.martyn82.eventscheduler.grpc";
 option java_outer_classname = "EventProto";
 
 message Event {
-  string message_identifier = 1;
-  string aggregate_identifier = 2;
-  int64 aggregate_sequence_number = 3;
-  string aggregate_type = 4;
-  google.protobuf.Timestamp timestamp = 5;
-  string payload_revision = 6;
-  google.protobuf.Any payload = 7;
-  map<string, MetaDataValue> meta_data = 8;
-  bool snapshot = 9;
+  string message_identifier             = 1 [(validate.rules).string.min_len = 1];
+  string aggregate_identifier           = 2 [(validate.rules).string.min_len = 1];
+  int64 aggregate_sequence_number       = 3 [(validate.rules).int64.gte = 1];
+  string aggregate_type                 = 4 [(validate.rules).string.min_len = 1];
+  google.protobuf.Timestamp timestamp   = 5 [(validate.rules).message.required = true];
+  string payload_revision               = 6 [(validate.rules).string.min_len = 3];
+  google.protobuf.Any payload           = 7 [(validate.rules).any.required = true];
+  map<string, MetaDataValue> meta_data  = 8;
+  bool snapshot                         = 9;
 }
 
 message MetaDataValue {

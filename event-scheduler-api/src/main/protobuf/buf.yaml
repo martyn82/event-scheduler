@@ -1,12 +1,10 @@
 version: v1
-
-build:
-  excludes:
-    - target/validate
+name: buf.build/martyn82/event-scheduler
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/envoyproxy/protoc-gen-validate
 
 lint:
-  ignore:
-    - validate/validate.proto
   use:
     - DEFAULT
 

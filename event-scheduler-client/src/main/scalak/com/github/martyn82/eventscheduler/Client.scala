@@ -3,7 +3,7 @@ package com.github.martyn82.eventscheduler
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import com.github.martyn82.eventscheduler.client.EventSchedulerClient
-import com.github.martyn82.eventscheduler.grpc.{Event, MetaDataValue, NewAccountEmailVerificationDeadlinePassed, ScheduleEventRequest, SubscribeRequest}
+import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, Event, MetaDataValue, NewAccountEmailVerificationDeadlinePassed, ScheduleEventRequest, ScheduleToken, SubscribeRequest}
 import com.google.protobuf.any.Any
 import com.google.protobuf.timestamp.Timestamp
 
@@ -59,7 +59,15 @@ object Client extends App {
   client.scheduleEvent(
     ScheduleEventRequest.of(Some(event), Some(Timestamp.of(Instant.now().getEpochSecond, 0)))
   ).onComplete {
-    case Success(token) => println(token)
+    case Success(token) =>
+      client.cancelEvent(
+        CancelEventRequest.of(
+          Some(ScheduleToken.of(token))
+        )
+      ).onComplete {
+        case Success(()) =>
+        case Failure(exception) => println(exception.getMessage)
+      }
     case Failure(exception) => println(exception.getMessage)
   }
 }

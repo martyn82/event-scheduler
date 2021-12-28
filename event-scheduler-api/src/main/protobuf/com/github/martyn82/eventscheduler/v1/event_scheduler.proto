@@ -1,25 +1,26 @@
 syntax = "proto3";
 
-package com.github.martyn82.eventscheduler.v1;
+package github.martyn82.eventscheduler.v1;
 
 import "com/github/martyn82/eventscheduler/v1/event.proto";
 import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
 
 option java_multiple_files = true;
 option java_package = "com.github.martyn82.eventscheduler.grpc";
 option java_outer_classname = "EventSchedulerServiceProto";
 
 service EventSchedulerService {
-  rpc ScheduleEvent(ScheduleEventRequest) returns (ScheduleEventResponse);
+  rpc ScheduleEvent(ScheduleEventRequest)     returns (ScheduleEventResponse);
   rpc RescheduleEvent(RescheduleEventRequest) returns (RescheduleEventResponse);
-  rpc CancelEvent(CancelEventRequest) returns (CancelEventResponse);
+  rpc CancelEvent(CancelEventRequest)         returns (CancelEventResponse);
 
-  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+  rpc Subscribe(SubscribeRequest)             returns (stream SubscribeResponse);
 }
 
 message ScheduleEventRequest {
-  Event event = 1;
-  google.protobuf.Timestamp at = 2;
+  Event event                   = 1 [(validate.rules).message.required = true];
+  google.protobuf.Timestamp at  = 2 [(validate.rules).message.required = true];
 }
 
 message ScheduleEventResponse {
@@ -27,8 +28,8 @@ message ScheduleEventResponse {
 }
 
 message RescheduleEventRequest {
-  ScheduleToken token = 1;
-  google.protobuf.Timestamp at = 2;
+  ScheduleToken token           = 1 [(validate.rules).message.required = true];
+  google.protobuf.Timestamp at  = 2 [(validate.rules).message.required = true];
 }
 
 message RescheduleEventResponse {
@@ -36,14 +37,14 @@ message RescheduleEventResponse {
 }
 
 message CancelEventRequest {
-  ScheduleToken token = 1;
+  ScheduleToken token = 1 [(validate.rules).message.required = true];
 }
 
 message CancelEventResponse {}
 
 message SubscribeRequest {
   oneof offset {
-    uint64 sequence_number = 1;
+    uint64 sequence_number              = 1;
     google.protobuf.Timestamp timestamp = 2;
   }
 }
@@ -53,5 +54,5 @@ message SubscribeResponse {
 }
 
 message ScheduleToken {
-  string token = 1;
+  string token = 1 [(validate.rules).string.min_len = 1];
 }
