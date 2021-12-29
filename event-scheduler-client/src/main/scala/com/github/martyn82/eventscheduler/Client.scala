@@ -2,8 +2,8 @@ package com.github.martyn82.eventscheduler
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
-import com.github.martyn82.eventscheduler.client.EventSchedulerClient
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, Event, MetaDataValue, NewAccountEmailVerificationDeadlinePassed, ScheduleEventRequest, ScheduleToken, SubscribeRequest}
+import akka.grpc.GrpcClientSettings
+import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerServiceClient, Event, MetaDataValue, NewAccountEmailVerificationDeadlinePassed, ScheduleEventRequest, SubscribeRequest}
 import com.google.protobuf.any.Any
 import com.google.protobuf.timestamp.Timestamp
 
@@ -28,7 +28,11 @@ object Client extends App {
     snapshot = false
   )
 
-  val client = new EventSchedulerClient("localhost", 50051)
+  val client = new DefaultEventSchedulerServiceClient(
+    GrpcClientSettings
+      .connectToServiceAt("localhost", 50051)
+      .withTls(false)
+  )
 
   client.subscribe(
     SubscribeRequest.of(
@@ -40,11 +44,11 @@ object Client extends App {
       )
     ))
     .map { event =>
-      event.payload.get match {
-        case _ if event.payload.get.is(NewAccountEmailVerificationDeadlinePassed) => {
+      event.getEvent.getPayload match {
+        case _ if event.getEvent.getPayload.is(NewAccountEmailVerificationDeadlinePassed) => {
           println("RECEIVED NewAccountEmailVerificationDeadlinePassed")
 
-          val deadline = event.payload.get.unpack(NewAccountEmailVerificationDeadlinePassed)
+          val deadline = event.getEvent.getPayload.unpack(NewAccountEmailVerificationDeadlinePassed)
           println(deadline)
 
           println(event)
@@ -62,10 +66,10 @@ object Client extends App {
     case Success(token) =>
       client.cancelEvent(
         CancelEventRequest.of(
-          Some(ScheduleToken.of(token))
+          token.token
         )
       ).onComplete {
-        case Success(()) =>
+        case Success(response) => ()
         case Failure(exception) => println(exception.getMessage)
       }
     case Failure(exception) => println(exception.getMessage)

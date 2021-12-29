@@ -1,13 +1,17 @@
 package com.github.martyn82.eventscheduler
 
+import akka.actor.typed.ActorSystem
 import akka.japi.function
+import akka.persistence.jdbc.testkit.scaladsl.SchemaUtils
 import akka.projection.jdbc.JdbcSession
 import scalikejdbc._
 
 import java.sql.Connection
 
 object ScalikeJdbcSession {
-  def createSchema()(implicit session: DBSession): Unit = {
+  def createSchema()(implicit session: DBSession, sys: ActorSystem[_]): Unit = {
+    SchemaUtils.createIfNotExists()
+
     sql"""
        |CREATE TABLE IF NOT EXISTS akka_projection_offset_store (
        |                                                            projection_name VARCHAR(255) NOT NULL,

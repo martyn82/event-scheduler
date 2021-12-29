@@ -4,7 +4,6 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
-import akka.persistence.jdbc.testkit.scaladsl.SchemaUtils
 import com.typesafe.config.ConfigFactory
 import org.slf4j.{Logger, LoggerFactory}
 import scalikejdbc.config.DBs
@@ -18,7 +17,6 @@ object Server extends App {
   implicit val session: DBSession = AutoSession
 
   DBs.setupAll()
-  SchemaUtils.createIfNotExists()(sys)
   ScalikeJdbcSession.createSchema()
 
   AkkaManagement(sys).start()

@@ -1,3 +1,4 @@
+import scalapb.GeneratorOption.FlatPackage
 
 lazy val AkkaVersion = "2.6.17"
 lazy val AkkaHttpVersion = "10.2.7"
@@ -92,32 +93,56 @@ lazy val `event-scheduler-api` = project
   .settings(
     name := "event-scheduler-api",
 
-    akkaGrpcCodeGeneratorSettings += "flat_package",
+    Compile / PB.targets += scalapb.validate.gen(FlatPackage) -> (Compile / akkaGrpcCodeGeneratorSettings / target).value,
 
     libraryDependencies ++= Seq(
-      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+      "com.thesamet.scalapb" %% "scalapb-validate-core" % scalapb.validate.compiler.BuildInfo.version % "protobuf",
+      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion % "protobuf",
 
       "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
-
-      "org.typelevel" %% "cats-core" % "2.7.0",
-    )
+    ),
   )
 
 lazy val `event-scheduler-client` = project
   .enablePlugins(AkkaGrpcPlugin)
-  .dependsOn(
-    `event-scheduler-api`
-  )
   .settings(
     name := "event-scheduler-client",
 
-    akkaGrpcCodeGeneratorSettings += "flat_package",
+    Compile / PB.targets += scalapb.validate.gen(FlatPackage) -> (Compile / akkaGrpcCodeGeneratorSettings / target).value,
+    Compile / PB.protoSources ++= Seq(
+      (Compile / crossTarget).value / "protobuf_external_src"
+    ),
 
     libraryDependencies ++= Seq(
-      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+      "com.thesamet.scalapb" %% "scalapb-validate-core" % scalapb.validate.compiler.BuildInfo.version % "protobuf",
+      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion % "protobuf",
 
       "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
       "com.typesafe.akka" %% "akka-discovery" % AkkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
-    )
+
+      "com.github.martyn82" %% "event-scheduler-api" % "0.1.0-SNAPSHOT" % "protobuf-src" intransitive(),
+    ),
+
+//    extractBufConfigs := {
+//      val target = (Compile / crossTarget).value / "protobuf_external_src"
+//      (Compile / jars).value.foreach { jar =>
+//        IO.unzip(jar.data, target, "buf.*", preserveLastModified = true)
+//      }
+//    },
+
+//    protoGenerate := {
+//      import scala.sys.process._
+//
+//      val target = (Compile / baseDirectory).value / "target" / "protobuf_extracted"
+////      val dest = (Compile / baseDirectory).value / "target"
+//
+//      val file = (Compile / resourceDirectory).value / "buf.gen.yaml"
+//      IO.copy(Seq((file, target / "buf.gen.yaml")), CopyOptions(overwrite = true, preserveLastModified = true, preserveExecutable = false))
+//
+//      "buf generate" !
+//    }
   )
+
+//lazy val extractBufConfigs = taskKey[Unit]("Extract the protos")
+//lazy val protoGenerate = taskKey[Unit]("Generate files from protos")

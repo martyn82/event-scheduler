@@ -15,12 +15,12 @@ import akka.projection.scaladsl.SourceProvider
 import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import com.github.martyn82.eventscheduler.Scheduler.EventData
-import com.github.martyn82.eventscheduler.client.ScheduleEventRequestValidator
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventResponse, Event, EventSchedulerService, EventSchedulerServiceHandler, RescheduleEventRequest, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventResponse, ScheduleToken, SubscribeRequest, SubscribeResponse}
+import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventRequestValidator, CancelEventResponse, Event, EventSchedulerService, EventSchedulerServiceHandler, RescheduleEventRequest, RescheduleEventRequestValidator, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventRequestValidator, ScheduleEventResponse, ScheduleToken, SubscribeRequest, SubscribeRequestValidator, SubscribeResponse}
 import com.google.protobuf.ByteString
 import com.google.protobuf.any.{Any => GrpcAny}
 import io.grpc.Status
 import org.slf4j.{Logger, LoggerFactory}
+import scalapb.validate
 
 import java.util.UUID
 import scala.concurrent.{Await, ExecutionContext, Future, TimeoutException}
@@ -61,20 +61,21 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
 
   class EventScheduler(sharding: ClusterSharding, generateToken: TokenGenerator) extends EventSchedulerService {
     override def scheduleEvent(in: ScheduleEventRequest): Future[ScheduleEventResponse] = {
-      val reply = ScheduleEventRequestValidator.validate(in).fold(
-        errors => Future.failed(
-          new GrpcServiceException(Status.INVALID_ARGUMENT.withDescription(errors.head.getMessage))
-        ),
-        v =>
-        sharding.entityRefFor(Scheduler.EntityKey, generateToken())
-          .askWithStatus(
-            Scheduler.Schedule(
-              v.event.map(GrpcAny.pack(_)).map(a => EventData(a.typeUrl, a.value.toByteArray)).get,
-              v.at.get.seconds,
-              _
+      val reply = ScheduleEventRequestValidator.validate(in) match {
+        case validate.Success =>
+          sharding.entityRefFor(Scheduler.EntityKey, generateToken())
+            .askWithStatus(
+              Scheduler.Schedule(
+                in.event.map(GrpcAny.pack(_)).map(a => EventData(a.typeUrl, a.value.toByteArray)).get,
+                in.at.get.seconds,
+                _
+              )
             )
+        case validate.Failure(errors) =>
+          Future.failed(
+            new GrpcServiceException(Status.INVALID_ARGUMENT.withDescription(errors.head.toString()))
           )
-      )
+      }
 
       convertError(
         reply.map { token =>
@@ -86,14 +87,21 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
     }
 
     override def rescheduleEvent(in: RescheduleEventRequest): Future[RescheduleEventResponse] = {
-      val reply = sharding.entityRefFor(Scheduler.EntityKey, in.token.get.token)
-        .askWithStatus(
-          Scheduler.Reschedule(
-            in.token.get.token,
-            in.at.get.seconds,
-            _
+      val reply = RescheduleEventRequestValidator.validate(in) match {
+        case validate.Success =>
+          sharding.entityRefFor(Scheduler.EntityKey, in.token.get.token)
+            .askWithStatus(
+              Scheduler.Reschedule(
+                in.token.get.token,
+                in.at.get.seconds,
+                _
+              )
+            )
+        case validate.Failure(errors) =>
+          Future.failed(
+            new GrpcServiceException(Status.INVALID_ARGUMENT.withDescription(errors.head.toString()))
           )
-        )
+      }
 
       convertError(
         reply.map { token =>
@@ -105,13 +113,20 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
     }
 
     override def cancelEvent(in: CancelEventRequest): Future[CancelEventResponse] = {
-      val reply = sharding.entityRefFor(Scheduler.EntityKey, in.token.get.token)
-        .askWithStatus(
-          Scheduler.Cancel(
-            in.token.get.token,
-            _
+      val reply: Future[_] = CancelEventRequestValidator.validate(in) match {
+        case validate.Success =>
+          sharding.entityRefFor(Scheduler.EntityKey, in.token.get.token)
+            .askWithStatus(
+              Scheduler.Cancel(
+                in.token.get.token,
+                _
+              )
+            )
+        case validate.Failure(errors) =>
+          Future.failed(
+            new GrpcServiceException(Status.INVALID_ARGUMENT.withDescription(errors.head.toString()))
           )
-        )
+      }
 
       convertError(
         reply.map(_ => CancelEventResponse.of())
@@ -119,31 +134,39 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
     }
 
     override def subscribe(in: SubscribeRequest): Source[SubscribeResponse, NotUsed] = {
-      val sourceProvider: SourceProvider[Offset, EventEnvelope[Scheduler.Event]] =
-        EventSourcedProvider.eventsByTag[Scheduler.Event](
-          system = system,
-          readJournalPluginId = JdbcReadJournal.Identifier,
-          tag = Scheduler.Tags(0)
-        )
+      SubscribeRequestValidator.validate(in) match {
+        case validate.Success =>
+          val sourceProvider: SourceProvider[Offset, EventEnvelope[Scheduler.Event]] =
+            EventSourcedProvider.eventsByTag[Scheduler.Event](
+              system = system,
+              readJournalPluginId = JdbcReadJournal.Identifier,
+              tag = Scheduler.Tags(0)
+            )
 
-      Await.result(
-        sourceProvider.source { () =>
-          Future.successful(
-            Some(Offset.sequence(in.offset.sequenceNumber.getOrElse(0)))
+          Await.result(
+            sourceProvider.source { () =>
+              Future.successful(
+                Some(Offset.sequence(in.offset.sequenceNumber.getOrElse(0)))
+              )
+            },
+            1 second
+          ).filter { envelope =>
+            in.offset.timestamp.map(_.seconds).getOrElse(0L) < (envelope.timestamp / 1000).longValue
+          }.map { envelope =>
+            repo.get(envelope.event.token)
+              .map { schedule =>
+                GrpcAny.of(schedule.eventType, ByteString.copyFrom(schedule.eventData))
+              }
+              .map(_.unpack(Event))
+          }.filter(_.nonEmpty)
+            .map(SubscribeResponse.of)
+
+        case validate.Failure(errors) =>
+          Source.failed(
+            new GrpcServiceException(Status.INVALID_ARGUMENT.withDescription(errors.head.toString()))
           )
-        },
-        1 second
-      )
-    }.filter { envelope =>
-      in.offset.timestamp.map(_.seconds).getOrElse(0L) < (envelope.timestamp / 1000).longValue
-    }.map { envelope =>
-      repo.get(envelope.event.token)
-        .map { schedule =>
-          GrpcAny.of(schedule.eventType, ByteString.copyFrom(schedule.eventData))
-        }
-        .map(_.unpack(Event))
-    }.filter(_.nonEmpty)
-      .map(SubscribeResponse.of)
+      }
+    }
 
     private def convertError[T](response: Future[T]): Future[T] =
       response.recoverWith {

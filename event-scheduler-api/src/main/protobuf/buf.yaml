@@ -1,5 +1,7 @@
 version: v1
+
 name: buf.build/martyn82/event-scheduler
+
 deps:
   - buf.build/googleapis/googleapis
   - buf.build/envoyproxy/protoc-gen-validate
