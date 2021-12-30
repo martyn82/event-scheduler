@@ -1,8 +1,9 @@
 syntax = "proto3";
 
-package com.github.martyn82.eventscheduler.grpc;
+package com.github.martyn82.eventscheduler;
 
 option java_multiple_files = true;
+option java_outer_classname = "DeadlineProto";
 
 message NewAccountEmailVerificationDeadlinePassed {
   string account_id = 1;

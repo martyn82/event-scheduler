@@ -1,3 +1,4 @@
+import scala.sys.process._
 import scalapb.GeneratorOption.FlatPackage
 
 lazy val AkkaVersion = "2.6.17"
@@ -7,6 +8,8 @@ lazy val AkkaProjectionVersion = "1.2.2"
 lazy val SlickVersion = "3.3.3"
 lazy val Slf4jVersion = "1.7.32"
 lazy val ScalikeJdbcVersion = "3.5.0"
+
+val BufCopy = config("bufCopy")
 
 ThisBuild / organization := "com.github.martyn82"
 ThisBuild / organizationName := "martyn82"
@@ -39,19 +42,27 @@ ThisBuild / libraryDependencies ++= Seq(
 )
 
 lazy val `event-scheduler-service` = project
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
-    `event-scheduler-api`,
+//    `event-scheduler-api` % "protobuf",
     `akka-event-scheduler`
   )
   .settings(
     name := "event-scheduler",
 
+    Compile / PB.targets += scalapb.validate.gen(FlatPackage) -> (Compile / akkaGrpcCodeGeneratorSettings / target).value,
+
     libraryDependencies ++= Seq(
+      "com.thesamet.scalapb" %% "scalapb-validate-core" % scalapb.validate.compiler.BuildInfo.version % "protobuf",
+      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+
       "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
       "com.typesafe.akka" %% "akka-http2-support" % AkkaHttpVersion,
       "com.typesafe.akka" %% "akka-discovery" % AkkaVersion,
       "com.typesafe.akka" %% "akka-pki" % AkkaVersion,
       "com.lightbend.akka.management" %% "akka-management-cluster-bootstrap" % "1.1.1",
+
+      "com.github.martyn82" %% "event-scheduler-api" % "0.1.0-SNAPSHOT" % "protobuf-src" intransitive(),
     ),
 
     dependencyOverrides ++= Seq(
@@ -105,6 +116,9 @@ lazy val `event-scheduler-api` = project
 
 lazy val `event-scheduler-client` = project
   .enablePlugins(AkkaGrpcPlugin)
+//  .dependsOn(
+//    `event-scheduler-api` % "protobuf"
+//  )
   .settings(
     name := "event-scheduler-client",
 
@@ -123,26 +137,34 @@ lazy val `event-scheduler-client` = project
 
       "com.github.martyn82" %% "event-scheduler-api" % "0.1.0-SNAPSHOT" % "protobuf-src" intransitive(),
     ),
-
-//    extractBufConfigs := {
-//      val target = (Compile / crossTarget).value / "protobuf_external_src"
-//      (Compile / jars).value.foreach { jar =>
-//        IO.unzip(jar.data, target, "buf.*", preserveLastModified = true)
-//      }
-//    },
-
-//    protoGenerate := {
-//      import scala.sys.process._
-//
-//      val target = (Compile / baseDirectory).value / "target" / "protobuf_extracted"
-////      val dest = (Compile / baseDirectory).value / "target"
-//
-//      val file = (Compile / resourceDirectory).value / "buf.gen.yaml"
-//      IO.copy(Seq((file, target / "buf.gen.yaml")), CopyOptions(overwrite = true, preserveLastModified = true, preserveExecutable = false))
-//
-//      "buf generate" !
-//    }
   )
 
-//lazy val extractBufConfigs = taskKey[Unit]("Extract the protos")
-//lazy val protoGenerate = taskKey[Unit]("Generate files from protos")
+lazy val `event-scheduler-api-build` = project
+//  .dependsOn(
+//    `event-scheduler-api` % "protobuf"
+//  )
+  .configs(
+    BufCopy
+  )
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.github.martyn82" %% "event-scheduler-api" % "0.1.0-SNAPSHOT" % "protobuf-src" intransitive(),
+    ),
+
+    bufCopy := {
+      val dependencies = Seq(
+        s"event-scheduler-api_2.13.jar"
+      )
+      (BufCopy / update).value.allFiles.foreach { f =>
+        if (dependencies.contains(f.getName))
+          IO.unzip(f, (Compile / baseDirectory).value / "target" / "protobuf_external_src", "buf*", preserveLastModified = true)
+      }
+    },
+
+    bufGen := {
+      Process("buf generate", file("event-scheduler-api-build")) !
+    }
+  )
+
+lazy val bufCopy = taskKey[Unit]("Copy buf config from dependencies")
+lazy val bufGen = taskKey[Unit]("BUF: Generate code from proto files")

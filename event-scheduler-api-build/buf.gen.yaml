@@ -1,0 +1,13 @@
+version: v1
+
+managed:
+  enabled: true
+  java_package_prefix: com
+
+plugins:
+  - name: js
+    out: target/proto/nodejs
+    opt: import_style=commonjs,binary
+
+  - name: php
+    out: target/proto/php

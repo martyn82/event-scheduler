@@ -15,7 +15,7 @@ import akka.projection.scaladsl.SourceProvider
 import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import com.github.martyn82.eventscheduler.Scheduler.EventData
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, CancelEventRequestValidator, CancelEventResponse, Event, EventSchedulerService, EventSchedulerServiceHandler, RescheduleEventRequest, RescheduleEventRequestValidator, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventRequestValidator, ScheduleEventResponse, ScheduleToken, SubscribeRequest, SubscribeRequestValidator, SubscribeResponse}
+import com.github.martyn82.eventscheduler.v1.{CancelEventRequest, CancelEventRequestValidator, CancelEventResponse, Event, EventSchedulerService, EventSchedulerServiceHandler, RescheduleEventRequest, RescheduleEventRequestValidator, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventRequestValidator, ScheduleEventResponse, ScheduleToken, SubscribeRequest, SubscribeRequestValidator, SubscribeResponse}
 import com.google.protobuf.ByteString
 import com.google.protobuf.any.{Any => GrpcAny}
 import io.grpc.Status

@@ -3,7 +3,7 @@ package com.github.martyn82.eventscheduler
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.grpc.GrpcClientSettings
-import com.github.martyn82.eventscheduler.grpc.{CancelEventRequest, DefaultEventSchedulerServiceClient, Event, MetaDataValue, NewAccountEmailVerificationDeadlinePassed, ScheduleEventRequest, SubscribeRequest}
+import com.github.martyn82.eventscheduler.v1.{CancelEventRequest, DefaultEventSchedulerServiceClient, Event, MetaDataValue, ScheduleEventRequest, SubscribeRequest}
 import com.google.protobuf.any.Any
 import com.google.protobuf.timestamp.Timestamp
 

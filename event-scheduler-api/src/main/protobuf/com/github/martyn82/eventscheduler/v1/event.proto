@@ -1,13 +1,12 @@
 syntax = "proto3";
 
-package github.martyn82.eventscheduler.v1;
+package com.github.martyn82.eventscheduler.v1;
 
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 import "validate/validate.proto";
 
 option java_multiple_files = true;
-option java_package = "com.github.martyn82.eventscheduler.grpc";
 option java_outer_classname = "EventProto";
 
 message Event {
