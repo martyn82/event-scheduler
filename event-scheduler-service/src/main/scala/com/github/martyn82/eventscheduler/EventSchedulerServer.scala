@@ -7,6 +7,8 @@ import akka.grpc.GrpcServiceException
 import akka.grpc.scaladsl.ServiceHandler
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.server.{AuthorizationFailedRejection, Directive0}
+import akka.http.scaladsl.server.Directives.{handle, headerValueByName, pass, reject}
 import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
 import akka.persistence.query.Offset
 import akka.projection.eventsourced.EventEnvelope
@@ -33,6 +35,12 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
+  private val withAuthorisation: Directive0 =
+    headerValueByName("token").flatMap { token =>
+      if (token == "XYZ") pass
+      else reject(AuthorizationFailedRejection)
+    }
+
   private def tokenGenerator: TokenGenerator = () =>
     UUID.randomUUID().toString
 
@@ -44,7 +52,7 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
 
     val bound: Future[Http.ServerBinding] = Http(system)
       .newServerAt(interface, port)
-      .bind(service)
+      .bind(withAuthorisation(handle(service)))
       .map(_.addToCoordinatedShutdown(hardTerminationDeadline = 10 seconds))
 
     bound.onComplete {

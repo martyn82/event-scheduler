@@ -32,14 +32,16 @@ object Client extends App {
     GrpcClientSettings
       .connectToServiceAt("localhost", 50051)
       .withTls(false)
+      .withConnectionAttempts(10)
   )
   val scheduler = new DefaultEventSchedulerServiceClient(
     GrpcClientSettings
       .connectToServiceAt("localhost", 50051)
       .withTls(false)
+      .withConnectionAttempts(10)
   )
 
-  publisher.subscribe(
+  publisher.subscribe().addHeader("token", "XYZ").invoke(
     SubscribeRequest.of(
       SubscribeRequest.Offset.Timestamp(
         Timestamp.of(
@@ -65,7 +67,7 @@ object Client extends App {
     }
     .run()
 
-  scheduler.scheduleEvent(
+  scheduler.scheduleEvent().addHeader("token", "XYZ").invoke(
     ScheduleEventRequest.of(Some(event), Some(Timestamp.of(Instant.now().getEpochSecond, 0)))
   ).onComplete {
     case Success(token) =>
