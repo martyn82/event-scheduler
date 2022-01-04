@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.github.martyn82.eventscheduler.v1;
+
+import "com/github/martyn82/eventscheduler/v1/event.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EventPublisherProto";
+
+service EventPublisherService {
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+}
+
+message SubscribeRequest {
+  oneof offset {
+    uint64 sequence_number              = 1;
+    google.protobuf.Timestamp timestamp = 2;
+  }
+}
+
+message SubscribeResponse {
+  Event event = 1;
+}

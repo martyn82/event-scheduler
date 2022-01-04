@@ -13,8 +13,6 @@ service EventSchedulerService {
   rpc ScheduleEvent(ScheduleEventRequest)     returns (ScheduleEventResponse);
   rpc RescheduleEvent(RescheduleEventRequest) returns (RescheduleEventResponse);
   rpc CancelEvent(CancelEventRequest)         returns (CancelEventResponse);
-
-  rpc Subscribe(SubscribeRequest)             returns (stream SubscribeResponse);
 }
 
 message ScheduleEventRequest {
@@ -40,17 +38,6 @@ message CancelEventRequest {
 }
 
 message CancelEventResponse {}
-
-message SubscribeRequest {
-  oneof offset {
-    uint64 sequence_number              = 1;
-    google.protobuf.Timestamp timestamp = 2;
-  }
-}
-
-message SubscribeResponse {
-  Event event = 1;
-}
 
 message ScheduleToken {
   string token = 1 [(validate.rules).string.min_len = 1];

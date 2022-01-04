@@ -3,7 +3,7 @@ package com.github.martyn82.eventscheduler
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.grpc.GrpcClientSettings
-import com.github.martyn82.eventscheduler.v1.{CancelEventRequest, DefaultEventSchedulerServiceClient, Event, MetaDataValue, ScheduleEventRequest, SubscribeRequest}
+import com.github.martyn82.eventscheduler.v1.{CancelEventRequest, DefaultEventPublisherServiceClient, DefaultEventSchedulerServiceClient, Event, MetaDataValue, ScheduleEventRequest, SubscribeRequest}
 import com.google.protobuf.any.Any
 import com.google.protobuf.timestamp.Timestamp
 
@@ -28,13 +28,18 @@ object Client extends App {
     snapshot = false
   )
 
-  val client = new DefaultEventSchedulerServiceClient(
+  val publisher = new DefaultEventPublisherServiceClient(
+    GrpcClientSettings
+      .connectToServiceAt("localhost", 50051)
+      .withTls(false)
+  )
+  val scheduler = new DefaultEventSchedulerServiceClient(
     GrpcClientSettings
       .connectToServiceAt("localhost", 50051)
       .withTls(false)
   )
 
-  client.subscribe(
+  publisher.subscribe(
     SubscribeRequest.of(
       SubscribeRequest.Offset.Timestamp(
         Timestamp.of(
@@ -60,11 +65,11 @@ object Client extends App {
     }
     .run()
 
-  client.scheduleEvent(
+  scheduler.scheduleEvent(
     ScheduleEventRequest.of(Some(event), Some(Timestamp.of(Instant.now().getEpochSecond, 0)))
   ).onComplete {
     case Success(token) =>
-      client.cancelEvent(
+      scheduler.cancelEvent(
         CancelEventRequest.of(
           token.token
         )

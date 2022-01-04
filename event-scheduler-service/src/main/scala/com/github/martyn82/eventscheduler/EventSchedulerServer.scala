@@ -15,7 +15,7 @@ import akka.projection.scaladsl.SourceProvider
 import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import com.github.martyn82.eventscheduler.Scheduler.EventData
-import com.github.martyn82.eventscheduler.v1.{CancelEventRequest, CancelEventRequestValidator, CancelEventResponse, Event, EventSchedulerService, EventSchedulerServiceHandler, RescheduleEventRequest, RescheduleEventRequestValidator, RescheduleEventResponse, ScheduleEventRequest, ScheduleEventRequestValidator, ScheduleEventResponse, ScheduleToken, SubscribeRequest, SubscribeRequestValidator, SubscribeResponse}
+import com.github.martyn82.eventscheduler.v1._
 import com.google.protobuf.ByteString
 import com.google.protobuf.any.{Any => GrpcAny}
 import io.grpc.Status
@@ -59,7 +59,7 @@ class EventSchedulerServer(interface: String, port: Int, sharding: ClusterShardi
     bound
   }
 
-  class EventScheduler(sharding: ClusterSharding, generateToken: TokenGenerator) extends EventSchedulerService {
+  class EventScheduler(sharding: ClusterSharding, generateToken: TokenGenerator) extends EventSchedulerService with EventPublisherService {
     override def scheduleEvent(in: ScheduleEventRequest): Future[ScheduleEventResponse] = {
       val reply = ScheduleEventRequestValidator.validate(in) match {
         case validate.Success =>
