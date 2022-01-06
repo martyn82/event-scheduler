@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package com.github.martyn82.eventscheduler.v1;
+
+import "com/github/martyn82/eventscheduler/v1/event.proto";
+import "com/github/martyn82/eventscheduler/v1/schedule_token.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EventsProto";
+
+message EventScheduled {
+  Event event                             = 1;
+  google.protobuf.Timestamp scheduled_at  = 2;
+  ScheduleToken token                     = 3;
+}
+
+message EventRescheduled {
+  Event event                             = 1;
+  google.protobuf.Timestamp scheduled_at  = 2;
+  ScheduleToken token                     = 3;
+}
+
+message EventCanceled {
+  Event event                             = 1;
+  google.protobuf.Timestamp scheduled_at  = 2;
+  google.protobuf.Timestamp canceled_at   = 3;
+}

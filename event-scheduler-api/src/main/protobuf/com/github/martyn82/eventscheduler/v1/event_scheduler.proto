@@ -3,6 +3,7 @@ syntax = "proto3";
 package com.github.martyn82.eventscheduler.v1;
 
 import "com/github/martyn82/eventscheduler/v1/event.proto";
+import "com/github/martyn82/eventscheduler/v1/schedule_token.proto";
 import "google/protobuf/timestamp.proto";
 import "validate/validate.proto";
 
@@ -38,7 +39,3 @@ message CancelEventRequest {
 }
 
 message CancelEventResponse {}
-
-message ScheduleToken {
-  string token = 1 [(validate.rules).string.min_len = 1];
-}
